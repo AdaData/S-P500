@@ -2,6 +2,8 @@
 
 import discord
 import os
+import random
+import locale
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
@@ -35,6 +37,17 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
     member = member or interaction.user
     count = kekws.get(member.id, 0)
     await interaction.response.send_message(f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!')
+
+@bot.tree.command(
+    name="value",
+    description="Fetches the current market value of S&P Coin"
+)
+async def value(interaction):
+    dollars = random.randrange(0, 100000)
+    cents = random.randrange(0, 99)
+    value = dollars + (cents * .01)
+    await interaction.response.send_message(f'S&P Coin is currently trading at U.S {'${:,.2f}'.format(value)}')
+
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
