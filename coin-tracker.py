@@ -1,8 +1,10 @@
 # This example requires the 'members' and 'message_content' privileged intents to function.
 
 import discord
+import os
 from discord.ext import commands
-import random
+from discord import app_commands
+from typing import Optional
 
 description = '''An example bot to showcase the discord.ext.commands extension
 module.
@@ -20,20 +22,29 @@ kekws = {}
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    synced = await bot.tree.sync()
+    print(f'Synced {len(synced)} commands')
     print('------')
 
-@bot.command()
-async def count(ctx):
-    await ctx.send(f'You have {kekws.get(ctx.author.id, 0)} somie coins!')
+@bot.tree.command(
+    name="wallet",
+    description="Tells you how many S&P Coins you have"
+)
+@app_commands.describe(member='The member you want to see the wallet of; defaults to the user who uses the command')
+async def wallet(interaction, member: Optional[discord.Member] = None):
+    member = member or interaction.user
+    count = kekws.get(member.id, 0)
+    await interaction.response.send_message(f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!')
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     """"""
-    print(payload.emoji)
     if (payload.emoji.name == 'kekw'):
+        if (payload.user_id == payload.message_author_id):
+            print('Ignoring coin added by the same user')
+            return
         message_author_id = payload.message_author_id
         kekws[message_author_id] = kekws.get(message_author_id, 0) + 1
-        print(kekws)
 
 @bot.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
@@ -42,7 +53,10 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
         channel = bot.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
         message_author_id = message.author.id
-        kekws[message_author_id] = kekws.get(message_author_id, 1) - 1
-        print(kekws)
+        if (payload.user_id == message_author_id):
+            print('Ignoring coin removed by the same user')
+            return
+        count = kekws.get(message_author_id, 1)
+        kekws[message_author_id] = count - 1 if count > 0 else 0
 
-bot.run('key')
+bot.run(os.environ['S_P_500_KEY'])
