@@ -21,6 +21,8 @@ bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 kekws = {}
 
+last_value = 1000
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
@@ -43,10 +45,40 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
     description="Fetches the current market value of S&P Coin"
 )
 async def value(interaction):
-    dollars = random.randrange(0, 100000)
+    global last_value
+    procced = random.randint(0, 100) == 1
+    if (not procced):
+        factor = random.randint(1, 5) * .1
+        botRange = int(last_value - (last_value * factor))
+        topRange = int(last_value + (last_value * factor))
+        dollars = random.randrange(botRange, topRange)
+    else:
+        dollars = random.randrange(0, 100000)
     cents = random.randrange(0, 99)
     value = dollars + (cents * .01)
-    await interaction.response.send_message(f'S&P Coin is currently trading at U.S {'${:,.2f}'.format(value)}')
+    formatted_value = '${:,.2f}'.format(value)
+
+    perc_diff = ((value - last_value) / last_value) * 100
+    emoji = ':chart_with_upwards_trend:' if perc_diff > 0 else ':chart_with_downwards_trend:'
+    emoji_string = emoji
+    if (abs(perc_diff) > 15):
+        emoji_string += emoji
+    if (abs(perc_diff)) > 30:
+        emoji_string += emoji
+
+    message = f'S&P Coin is currently trading at {emoji_string} U.S {formatted_value}.'
+
+    if (procced):
+        message = 'MARKET FLUCTUATIONS! ' + message
+
+    if (perc_diff > 30):
+        message += " BUY BUY BUY!!!"
+    elif (perc_diff < - 30):
+        message += " HODL! :gem: Diamond Hands :gem:"
+
+    last_value = value
+
+    await interaction.response.send_message(message)
 
 
 @bot.event
