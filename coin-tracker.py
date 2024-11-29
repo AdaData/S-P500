@@ -3,7 +3,7 @@
 import discord
 import os
 import random
-import locale
+from operator import itemgetter
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
@@ -40,12 +40,7 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
     count = kekws.get(member.id, 0)
     await interaction.response.send_message(f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!')
 
-@bot.tree.command(
-    name="value",
-    description="Fetches the current market value of S&P Coin"
-)
-async def value(interaction):
-    global last_value
+def get_new_value():
     procced = random.randint(0, 100) == 1
     if (not procced):
         factor = random.randint(1, 5) * .1
@@ -57,19 +52,32 @@ async def value(interaction):
     cents = random.randrange(0, 99)
     value = dollars + (cents * .01)
     formatted_value = '${:,.2f}'.format(value)
+    return {'value': value, 'formatted_value': formatted_value, 'procced': procced}
 
-    perc_diff = ((value - last_value) / last_value) * 100
+def get_perc_diff(value, last_value):
+    return ((value - last_value) / last_value) * 100
+
+def get_emoji_string(perc_diff):
     emoji = ':chart_with_upwards_trend:' if perc_diff > 0 else ':chart_with_downwards_trend:'
     emoji_string = emoji
     if (abs(perc_diff) > 15):
         emoji_string += emoji
     if (abs(perc_diff)) > 30:
         emoji_string += emoji
+    return emoji_string
 
-    message = f'S&P Coin is currently trading at {emoji_string} U.S {formatted_value}.'
+@bot.tree.command(
+    name="value",
+    description="Fetches the current market value of S&P Coin"
+)
+async def value(interaction):
+    global last_value
+    value, formatted_value, procced = itemgetter('value', 'formatted_value', 'procced')(get_new_value())
+    perc_diff = get_perc_diff(value, last_value)
+    emoji_string = get_emoji_string(perc_diff)
 
-    if (procced):
-        message = 'MARKET FLUCTUATIONS! ' + message
+    message = 'MARKET FLUCTUATIONS! ' if procced else ''
+    message += f'S&P Coin is currently trading at {emoji_string} U.S. {formatted_value}.'
 
     if (perc_diff > 30):
         message += " BUY BUY BUY!!!"
