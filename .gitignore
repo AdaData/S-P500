@@ -1,3 +1,7 @@
+# Project files
+user_coin_counts.txt
+value.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
