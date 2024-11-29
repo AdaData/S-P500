@@ -27,13 +27,19 @@ last_value = 1000
 @bot.event
 async def on_ready():
     global user_coin_counts
+    global last_value
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     synced = await bot.tree.sync()
     print(f'Synced {len(synced)} commands')
     f = open('user_coin_counts.txt', 'r')
     user_coin_counts = json.loads(f.read())
+    f.close()
     print('Loaded user_coin_counts')
     print(user_coin_counts)
+    f = open('value.txt', 'r')
+    last_value = float(f.read())
+    print(f'Loaded last value: {last_value}')
+    f.close()
     print('------')
 
 @bot.tree.command(
@@ -75,6 +81,11 @@ def get_emoji_string(perc_diff):
         emoji_string += emoji
     return emoji_string
 
+def write_value_to_file():
+    f = open("value.txt", "w")
+    f.write(str(last_value))
+    f.close()
+
 @bot.tree.command(
     name="value",
     description="Fetches the current market value of S&P Coin"
@@ -94,12 +105,14 @@ async def value(interaction):
         message += " HODL! :gem: Diamond Hands :gem:"
 
     last_value = value
+    write_value_to_file()
 
     await interaction.response.send_message(message)
 
 def write_user_coin_counts_to_file():
     f = open("user_coin_counts.txt", "w")
     f.write(json.dumps(user_coin_counts))
+    f.close()
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
