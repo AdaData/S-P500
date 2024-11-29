@@ -3,6 +3,7 @@
 import discord
 import os
 import random
+import json
 from operator import itemgetter
 from discord.ext import commands
 from discord import app_commands
@@ -19,15 +20,20 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
-kekws = {}
+user_coin_counts = {}
 
 last_value = 1000
 
 @bot.event
 async def on_ready():
+    global user_coin_counts
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     synced = await bot.tree.sync()
     print(f'Synced {len(synced)} commands')
+    f = open('user_coin_counts.txt', 'r')
+    user_coin_counts = json.loads(f.read())
+    print('Loaded user_coin_counts')
+    print(user_coin_counts)
     print('------')
 
 @bot.tree.command(
@@ -37,7 +43,7 @@ async def on_ready():
 @app_commands.describe(member='The member you want to see the wallet of; defaults to the user who uses the command')
 async def wallet(interaction, member: Optional[discord.Member] = None):
     member = member or interaction.user
-    count = kekws.get(member.id, 0)
+    count = user_coin_counts.get(str(member.id), 0) # since we save these to JSON, they need to be stringifed
     await interaction.response.send_message(f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!')
 
 def get_new_value():
@@ -88,28 +94,33 @@ async def value(interaction):
 
     await interaction.response.send_message(message)
 
+def write_user_coin_counts_to_file():
+    f = open("user_coin_counts.txt", "w")
+    f.write(json.dumps(user_coin_counts))
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     """"""
-    if (payload.emoji.name == 'kekw'):
+    if (payload.emoji.name == os.environ['COIN_EMOJI_NAME']):
         if (payload.user_id == payload.message_author_id):
             print('Ignoring coin added by the same user')
             return
         message_author_id = payload.message_author_id
-        kekws[message_author_id] = kekws.get(message_author_id, 0) + 1
+        user_coin_counts[str(message_author_id)] = user_coin_counts.get(str(message_author_id), 0) + 1
+        write_user_coin_counts_to_file()
 
 @bot.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
     """"""
-    if(payload.emoji.name == 'kekw'):
+    if(payload.emoji.name == os.environ['COIN_EMOJI_NAME']):
         channel = bot.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
         message_author_id = message.author.id
         if (payload.user_id == message_author_id):
             print('Ignoring coin removed by the same user')
             return
-        count = kekws.get(message_author_id, 1)
-        kekws[message_author_id] = count - 1 if count > 0 else 0
+        count = user_coin_counts.get(message_author_id, 1)
+        user_coin_counts[str(message_author_id)] = count - 1 if count > 0 else 0
+        write_user_coin_counts_to_file()
 
 bot.run(os.environ['S_P_500_KEY'])
