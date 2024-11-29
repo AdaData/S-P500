@@ -99,9 +99,9 @@ async def value(interaction):
     message = 'MARKET FLUCTUATIONS! ' if procced else ''
     message += f'S&P Coin is currently trading at {emoji_string} U.S. {formatted_value}.'
 
-    if (perc_diff > 30):
+    if (perc_diff < -30):
         message += " BUY BUY BUY!!!"
-    elif (perc_diff < - 30):
+    elif (perc_diff > 30):
         message += " HODL! :gem: Diamond Hands :gem:"
 
     last_value = value
