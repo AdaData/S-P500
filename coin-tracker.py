@@ -44,7 +44,10 @@ async def on_ready():
 async def wallet(interaction, member: Optional[discord.Member] = None):
     member = member or interaction.user
     count = user_coin_counts.get(str(member.id), 0) # since we save these to JSON, they need to be stringifed
-    await interaction.response.send_message(f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!')
+    coin_message = f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!'
+    formatted_liquid = '${:,.2f}'.format(count * last_value)
+    message = coin_message + f' ({formatted_liquid} USD)'
+    await interaction.response.send_message(message)
 
 def get_new_value():
     procced = random.randint(0, 100) == 1
