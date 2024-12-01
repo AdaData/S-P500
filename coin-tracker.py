@@ -144,17 +144,40 @@ async def get_user_by_id(id):
     
     return await bot.fetch_user(id) # this hits the discord API
 
+'''Takes our dictionary of {user_id: coin_count} and converts it to {coin_count: [list_of_users]}'''
+async def create_count_to_users_dict():
+    count_to_users = {}
+    for id,count in user_coin_counts.items():
+        user = await get_user_by_id(id)
+        if (count in count_to_users):
+            count_to_users[count].append(user)
+        else:
+            count_to_users[count] = [user]
+
+    return count_to_users
+
 @bot.tree.command(
     name="ranking",
     description="Gets the top HODLers of S&P Coin"
 )
 @app_commands.describe(number='How many people to include, defaults to 5')
 async def ranking(interaction, number:int=5):
-    rankings = list(reversed(sorted(user_coin_counts.items(), key=itemgetter(1))))[:number]
-    users = tuple([await get_user_by_id(id) for id,_ in rankings])
-    embed = discord.Embed(title=f'Top {len(users)} S&P Coin Bag Holders:')
-    for user in users:
-        embed.add_field(name=user_coin_counts[str(user.id)], value=user.mention, inline=False)
+    count_to_users = await create_count_to_users_dict()
+    # get the top {number} amounts of coins
+    rankings = list(reversed(sorted(count_to_users.keys())))[:number] #[:number] means take from index 0 number
+
+    embed = discord.Embed(title=f'Top {len(rankings)} S&P Coin Bag Holders:')
+    for count in rankings:
+        users = count_to_users[count] # list of users with {count} coins
+
+        users_string = users[0].mention # first (or only) user's @mention
+        name = str(count)
+        if (len(users) > 1):
+            name += " (tie)"
+            for user in users[1:]:
+                users_string += f', {user.mention}'
+                
+        embed.add_field(name=name, value=users_string, inline=False)
     await interaction.response.send_message(embed=embed)
 
 bot.run(os.environ['S_P_500_KEY'])
