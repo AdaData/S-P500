@@ -73,6 +73,9 @@ def write_user_coin_counts_to_file():
     f.write(json.dumps(user_coin_counts))
     f.close()
 
+def format_liquid(count):
+    return '${:,.2f}'.format(count * last_value)
+
 """
 We use on_raw_reaction_add/remove instead of on_reaction_add/remove as the docs suggest that
 there are cases on_reaction_add isn't called (when the message is not in the cache)
@@ -110,8 +113,7 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
     member = member or interaction.user
     count = user_coin_counts.get(str(member.id), 0)
     coin_message = f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!'
-    formatted_liquid = '${:,.2f}'.format(count * last_value)
-    message = coin_message + f' ({formatted_liquid} USD)'
+    message = coin_message + f' ({format_liquid(count)} USD)'
     await interaction.response.send_message(message)
 
 @bot.tree.command(
@@ -171,7 +173,7 @@ async def ranking(interaction, number:int=5):
         users = count_to_users[count] # list of users with {count} coins
 
         users_string = users[0].mention # first (or only) user's @mention
-        name = str(count)
+        name = f'{count} ({format_liquid(count)} USD)'
         if (len(users) > 1):
             name += " (tie)"
             for user in users[1:]:
