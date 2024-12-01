@@ -150,8 +150,8 @@ async def get_user_by_id(id):
 )
 @app_commands.describe(number='How many people to include, defaults to 5')
 async def ranking(interaction, number:int=5):
-    rankings = sorted(user_coin_counts, key=itemgetter(1))[:number]
-    users = tuple([await get_user_by_id(id) for id in rankings])
+    rankings = sorted(user_coin_counts.items(), key=itemgetter(1))[:number]
+    users = tuple([await get_user_by_id(id) for id,_ in rankings])
     embed = discord.Embed(title=f'Top {len(users)} S&P Coin Bag Holders:')
     for user in reversed(users): # the last field added goes on top so we want to reverse these
         embed.add_field(name=user_coin_counts[str(user.id)], value=user.mention, inline=False)
