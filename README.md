@@ -16,4 +16,4 @@ The bot uses 2 environment variables:
 The bot creates 2 files to persist the coin counts per user and the last market value of S&P coin. On initial startup, `on_ready` will throw an error because those files don't exist, but that's fine, everything should work.
 
 ## Deployment
-The bot is currently deployed on a Google Compute platform VM owned by Ada. She just copy-pastes the current code of coin-tracker.py and runs it. 
+The bot is currently deployed on a Google Compute platform VM owned by Ada. She just copy-pastes the current code of coin-tracker.py and runs it, there's no CI/CD.
