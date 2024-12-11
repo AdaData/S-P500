@@ -64,17 +64,15 @@ def get_emoji_string(perc_diff):
     return emoji_string
 
 def write_value_to_file():
-    f = open("value.txt", "w")
-    f.write(str(last_value))
-    f.close()
+    with open("value.txt", "w") as f:
+        f.write(str(last_value))
 
 def write_user_coin_counts_to_file():
-    f = open("user_coin_counts.txt", "w")
-    f.write(json.dumps(user_coin_counts))
-    f.close()
+    with open("user_coin_counts.txt", "w") as f:
+        f.write(json.dumps(user_coin_counts))
 
 def format_liquid(count):
-    return '${:,.2f}'.format(count * last_value)
+    return '${:,.2f}'.format(count * last_value) + " USD"
 
 """
 We use on_raw_reaction_add/remove instead of on_reaction_add/remove as the docs suggest that
@@ -113,7 +111,7 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
     member = member or interaction.user
     count = user_coin_counts.get(str(member.id), 0)
     coin_message = f'{member.mention} has {count} S&P Coins!' if count != 1 else f'{member.mention} has 1 S&P Coin!'
-    message = coin_message + f' ({format_liquid(count)} USD)'
+    message = coin_message + f' ({format_liquid(count)})'
     await interaction.response.send_message(message)
 
 @bot.tree.command(
@@ -173,13 +171,45 @@ async def ranking(interaction, number:int=5):
         users = count_to_users[count] # list of users with {count} coins
 
         users_string = users[0].mention # first (or only) user's @mention
-        name = f'{count} ({format_liquid(count)} USD)'
+        name = f'{count} ({format_liquid(count)})'
         if (len(users) > 1):
             name += " (tie)"
             for user in users[1:]:
                 users_string += f', {user.mention}'
                 
         embed.add_field(name=name, value=users_string, inline=False)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(
+    name="trade",
+    description="Trade another user an amount of S&P Coin"
+)
+@app_commands.describe(member='The member you want to trade to')
+async def trade(interaction, member: discord.Member, number: int = 1):
+    sending_user_id = str(interaction.user.id)
+    sending_user_count = user_coin_counts[sending_user_id]
+    if not (sending_user_count - number > 0):
+        await interaction.response.send_message(f"{interaction.user.mention} just tried to trade more coins than they had. Mock the brokey.")
+        return
+
+    recipient_user_id = str(member.id)
+    recipient_count = user_coin_counts[recipient_user_id] or 0
+
+    sending_user_count = sending_user_count - number
+    recipient_count = recipient_count + number
+
+    user_coin_counts[sending_user_id] = sending_user_count
+    user_coin_counts[recipient_user_id] = recipient_count
+
+    write_user_coin_counts_to_file()
+
+    embed = discord.Embed(title=f'A new trade has been made!')
+    embed.add_field(name="Sender", value=interaction.user.mention)
+    embed.add_field(name="Coins Traded", value=str(number))
+    embed.add_field(name="Recipient", value=member.mention)
+    embed.add_field(name="Sender's Coins", value=f"{sending_user_count} ({format_liquid(int(sending_user_count))})", inline=False)
+    embed.add_field(name="Recipient's Coins", value=f"{recipient_count} ({format_liquid(int(recipient_count))})")
+
     await interaction.response.send_message(embed=embed)
 
 bot.run(os.environ['S_P_500_KEY'])
