@@ -2,7 +2,9 @@ import discord
 import os
 import random
 import json
+import math
 from operator import itemgetter
+from datetime import datetime, timedelta
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
@@ -17,6 +19,7 @@ bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 # initial values, although they are overwritten in on_ready if the relevant files exist
 user_coin_counts = {}
+last_value_query_time_per_user = {}
 last_value = 1000
 
 @bot.event
@@ -120,6 +123,27 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
 )
 async def value(interaction):
     global last_value
+
+    last_value_query_time_by_user = last_value_query_time_per_user.get(interaction.user.id)
+    
+    if last_value_query_time_by_user is not None:
+        next_available_time = last_value_query_time_by_user + timedelta(days=1)
+        if next_available_time > datetime.now():
+            time_til_next = next_available_time - datetime.now()
+            seconds_to_account_for = time_til_next.total_seconds()
+            hours = math.floor(seconds_to_account_for / 3600)
+            seconds_to_account_for = seconds_to_account_for - hours * 3600
+            minutes = math.floor(seconds_to_account_for / 60)
+            seconds_to_account_for = seconds_to_account_for - minutes * 60
+            message = f"{hours} hours " if hours > 0 else ""
+            message = message + f"{minutes} minutes " if minutes > 0 else ""
+            message = message + f"{math.floor(seconds_to_account_for)} seconds"
+            await interaction.response.send_message(f'Sorry, you can only check the market value once per day. You can next check the market value in {message}.',
+                                                    ephemeral=True)
+            return
+
+    last_value_query_time_per_user[interaction.user.id] = datetime.now()
+
     value, formatted_value, procced = itemgetter('value', 'formatted_value', 'procced')(get_new_value())
     perc_diff = get_perc_diff(value, last_value)
     emoji_string = get_emoji_string(perc_diff)
