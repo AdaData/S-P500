@@ -209,12 +209,11 @@ async def trade(interaction, member: discord.Member, number: int):
 
     write_user_coin_counts_to_file()
 
-    embed = discord.Embed(title=f'A new trade has been made!')
-    embed.add_field(name="Sender", value=interaction.user.mention)
-    embed.add_field(name="Coins Traded", value=str(number))
-    embed.add_field(name="Recipient", value=member.mention)
-    embed.add_field(name="Sender's Coins", value=f"{sending_user_count} ({format_liquid(int(sending_user_count))})", inline=False)
-    embed.add_field(name="Recipient's Coins", value=f"{recipient_count} ({format_liquid(int(recipient_count))})")
+    embed = discord.Embed(title=f'A new trade has been made!',
+                          description=f'''{interaction.user.mention} traded {member.mention} {number} <a:spcoinbot:1316612238290849822>
+### New Wallets:''')
+    embed.add_field(name=interaction.user.display_name, value=f"{sending_user_count} ({format_liquid(sending_user_count)})")
+    embed.add_field(name=member.display_name, value=f"{recipient_count} ({format_liquid(recipient_count)})")
 
     await interaction.response.send_message(embed=embed)
 
