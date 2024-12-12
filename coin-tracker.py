@@ -188,6 +188,12 @@ async def ranking(interaction, number:int=5):
 async def trade(interaction, member: discord.Member, number: int = 1):
     sending_user_id = str(interaction.user.id)
     sending_user_count = user_coin_counts[sending_user_id]
+    if interaction.user.id == member.id:
+        await interaction.response.send_message("Nice try.", ephemeral=True)
+        return
+    if number < 0:
+        await interaction.response.send_message("Be nice to the bot. -ada", ephemeral=True)
+        return
     if not (sending_user_count - number >= 0):
         await interaction.response.send_message(f"{interaction.user.mention} just tried to trade more coins than they had. Mock the brokey.")
         return
