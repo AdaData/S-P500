@@ -185,7 +185,7 @@ async def ranking(interaction, number:int=5):
     description="Trade another user an amount of S&P Coin"
 )
 @app_commands.describe(member='The member you want to trade to')
-async def trade(interaction, member: discord.Member, number: int = 1):
+async def trade(interaction, member: discord.Member, number: int):
     sending_user_id = str(interaction.user.id)
     sending_user_count = user_coin_counts[sending_user_id]
     if interaction.user.id == member.id:
