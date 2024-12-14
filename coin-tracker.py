@@ -117,17 +117,17 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
     message = coin_message + f' ({format_liquid(count)})'
     await interaction.response.send_message(message)
 
-@bot.tree.command(
-    name="value",
-    description="Fetches the current market value of S&P Coin"
-)
-async def value(interaction):
-    global last_value
-
+async def allowValueCheck(interaction):
     last_value_query_time_by_user = last_value_query_time_per_user.get(interaction.user.id)
+
+    with open("slow_mode_hours.txt", "r") as f:
+        slow_mode_hours = int(f.read())
+    
+    if (slow_mode_hours is None or slow_mode_hours == 0):
+        return True
     
     if last_value_query_time_by_user is not None:
-        next_available_time = last_value_query_time_by_user + timedelta(days=1)
+        next_available_time = last_value_query_time_by_user + timedelta(hours=slow_mode_hours)
         if next_available_time > datetime.now():
             time_til_next = next_available_time - datetime.now()
             seconds_to_account_for = time_til_next.total_seconds()
@@ -138,9 +138,21 @@ async def value(interaction):
             message = f"{hours} hours " if hours > 0 else ""
             message = message + f"{minutes} minutes " if minutes > 0 else ""
             message = message + f"{math.floor(seconds_to_account_for)} seconds"
-            await interaction.response.send_message(f'Sorry, you can only check the market value once per day. You can next check the market value in {message}.',
+            await interaction.response.send_message(f'Sorry, you can only check the market value once per {slow_mode_hours} hours. You can next check the market value in {message}.',
                                                     ephemeral=True)
-            return
+            return False
+    return True
+
+@bot.tree.command(
+    name="value",
+    description="Fetches the current market value of S&P Coin"
+)
+async def value(interaction):
+    global last_value
+
+
+    if not await allowValueCheck(interaction=interaction):
+        return
 
     last_value_query_time_per_user[interaction.user.id] = datetime.now()
 
