@@ -230,6 +230,9 @@ async def trade(interaction, member: discord.Member, number: int):
     if number < 0:
         await interaction.response.send_message("Be nice to the bot. -ada", ephemeral=True)
         return
+    if number == 0:
+        await interaction.response.send_message("Please trade more than 0 coins.", ephemeral=True)
+        return
     if not (sending_user_count - number >= 0):
         await interaction.response.send_message(f"{interaction.user.mention} just tried to trade more coins than they had. Mock the brokey.")
         return
