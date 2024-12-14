@@ -223,7 +223,7 @@ async def ranking(interaction, number:int=5):
 @app_commands.describe(member='The member you want to trade to')
 async def trade(interaction, member: discord.Member, number: int):
     sending_user_id = str(interaction.user.id)
-    sending_user_count = user_coin_counts[sending_user_id]
+    sending_user_count = user_coin_counts.get(sending_user_id) or 0
     if interaction.user.id == member.id:
         await interaction.response.send_message("Nice try.", ephemeral=True)
         return
@@ -235,7 +235,7 @@ async def trade(interaction, member: discord.Member, number: int):
         return
 
     recipient_user_id = str(member.id)
-    recipient_count = user_coin_counts[recipient_user_id] or 0
+    recipient_count = user_coin_counts.get(recipient_user_id) or 0
 
     sending_user_count = sending_user_count - number
     recipient_count = recipient_count + number
