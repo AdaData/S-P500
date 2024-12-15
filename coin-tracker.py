@@ -18,8 +18,14 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 # initial values, although they are overwritten in on_ready if the relevant files exist
+
+# a map of {user_id: number_of_coins_that_user_has}
 user_coin_counts = {}
+
+# turned off in prod - a map of {user_id: last_time_that_user_queried_value}
 last_value_query_time_per_user = {}
+
+# default value for the last market value. will be pulled from value.txt though
 last_value = 1000
 
 @bot.event
@@ -27,19 +33,23 @@ async def on_ready():
     global user_coin_counts
     global last_value
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    synced = await bot.tree.sync()
+
+    synced = await bot.tree.sync() #syncs the slash commands with discord
+
     print(f'Synced {len(synced)} commands')
-    f = open('user_coin_counts.txt', 'r')
-    user_coin_counts = json.loads(f.read())
-    f.close()
+    with open('user_coin_counts.txt', 'r') as f:
+        user_coin_counts = json.loads(f.read())
     print('Loaded user_coin_counts')
     print(user_coin_counts)
-    f = open('value.txt', 'r')
-    last_value = float(f.read())
+
+    with open('value.txt', 'r') as f:
+        last_value = float(f.read())
     print(f'Loaded last value: {last_value}')
-    f.close()
+
     print('------')
 
+# helper function to generate a new random value
+# don't tell people about the proc or proc chance if they don't know already :)
 def get_new_value():
     procced = random.randint(0, 100) == 1
     if (not procced):
@@ -50,6 +60,7 @@ def get_new_value():
     else:
         dollars = random.randrange(0, 100000)
     cents = random.randrange(0, 99)
+
     value = dollars + (cents * .01)
     formatted_value = '${:,.2f}'.format(value)
     return {'value': value, 'formatted_value': formatted_value, 'procced': procced}
@@ -84,11 +95,14 @@ there are cases on_reaction_add isn't called (when the message is not in the cac
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    print(payload.emoji.name)
     if (payload.emoji.name == os.environ['COIN_EMOJI_NAME']):
+
         if (payload.user_id == payload.message_author_id):
             return # we ignore coins added by the user that sent the message
         message_author_id = payload.message_author_id
         user_coin_counts[str(message_author_id)] = user_coin_counts.get(str(message_author_id), 0) + 1
+        print(user_coin_counts[str(message_author_id)])
         write_user_coin_counts_to_file()
 
 @bot.event
@@ -143,15 +157,15 @@ async def allowValueCheck(interaction):
             return False
     return True
 
+# this is the syntax for saying "create a slash command with this name and description"
 @bot.tree.command(
     name="value",
     description="Fetches the current market value of S&P Coin"
 )
 async def value(interaction):
-    global last_value
+    global last_value # this just means "if I use last_value in this function, it's the one defined globally, not a new one I just created in this scope"
 
-
-    if not await allowValueCheck(interaction=interaction):
+    if not await allowValueCheck(interaction=interaction): # if slow_mode_hours is 0 this won't do anything
         return
 
     last_value_query_time_per_user[interaction.user.id] = datetime.now()
@@ -173,6 +187,7 @@ async def value(interaction):
 
     await interaction.response.send_message(message)
 
+# helper function to get a user by ID
 async def get_user_by_id(id):
     user = bot.get_user(id) # get_user is synchronous and based on the bot's cache
     if (user != None):
@@ -224,6 +239,8 @@ async def ranking(interaction, number:int=5):
 async def trade(interaction, member: discord.Member, number: int):
     sending_user_id = str(interaction.user.id)
     sending_user_count = user_coin_counts.get(sending_user_id) or 0
+
+    # do some edge case checking
     if interaction.user.id == member.id:
         await interaction.response.send_message("Nice try.", ephemeral=True)
         return
@@ -237,6 +254,7 @@ async def trade(interaction, member: discord.Member, number: int):
         await interaction.response.send_message(f"{interaction.user.mention} just tried to trade more coins than they had. Mock the brokey.")
         return
 
+    # do the actual trade
     recipient_user_id = str(member.id)
     recipient_count = user_coin_counts.get(recipient_user_id) or 0
 
@@ -256,4 +274,5 @@ async def trade(interaction, member: discord.Member, number: int):
 
     await interaction.response.send_message(embed=embed)
 
+# this actually starts the bot!
 bot.run(os.environ['S_P_500_KEY'])
