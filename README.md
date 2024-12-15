@@ -15,7 +15,7 @@ The bot uses 2 environment variables:
 
 The bot creates 2 files to persist the coin counts per user and the last market value of S&P coin. On initial startup, `on_ready` will throw an error because those files don't exist, but that's fine, everything should work and they'll be created during normal use.
 
-A third file is required but is a disabled feature currently, `slow_mode_hours.txt`. This limits queries by the same user to `/value` to 1 per the number in that file hours.
+A third file is also used but is a disabled feature currently, `slow_mode_hours.txt`. This limits queries by the same user to `/value` to 1 per the number in that file hours. If it's null or 0, it treats that as unlimited queries.
 
 ## Deployment
 The bot is currently deployed on a Google Compute platform VM owned by Ada. She just copy-pastes the current code of coin-tracker.py and runs it, there's no CI/CD.

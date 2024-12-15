@@ -134,8 +134,11 @@ async def wallet(interaction, member: Optional[discord.Member] = None):
 async def allowValueCheck(interaction):
     last_value_query_time_by_user = last_value_query_time_per_user.get(interaction.user.id)
 
-    with open("slow_mode_hours.txt", "r") as f:
-        slow_mode_hours = int(f.read())
+    try:
+        with open("slow_mode_hours.txt", "r") as f:
+            slow_mode_hours = int(f.read())
+    except:
+        slow_mode_hours = 0
     
     if (slow_mode_hours is None or slow_mode_hours == 0):
         return True
