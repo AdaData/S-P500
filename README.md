@@ -3,7 +3,7 @@ Discord bot to track the number of Somie Coins in S&P. Could theoretically be ex
 
 ## Setup
 - You need python 3
-- You'll need to install (discord.py([https://discordpy.readthedocs.io/en/stable/]. I had to do the "potentially breaking" pip3 option on WSL. On a normal ubuntu vm the usual pip3 method (`pip3 install discord.py`) worked fine.
+- You'll need to install (discord.py)[https://discordpy.readthedocs.io/en/stable/]. I had to do the "potentially breaking" pip3 option on WSL. On a normal ubuntu vm the usual pip3 method (`pip3 install discord.py`) worked fine.
 
 ### Environment
 The bot uses 2 environment variables:
