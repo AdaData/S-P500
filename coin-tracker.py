@@ -55,7 +55,7 @@ def get_new_value():
     if (not procced):
         factor = random.randint(1, 5) * .1
         botRange = int(last_value - (last_value * factor))
-        topRange = int(last_value + (last_value * factor))
+        topRange = int(last_value + (last_value * factor * 2))
         dollars = random.randrange(botRange, topRange)
     else:
         dollars = random.randrange(0, 100000)

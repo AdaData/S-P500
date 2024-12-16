@@ -1,6 +1,7 @@
 # Project files
 user_coin_counts.txt
 value.txt
+slow_mode_hours.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
