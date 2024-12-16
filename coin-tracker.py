@@ -3,6 +3,7 @@ import os
 import random
 import json
 import math
+import asyncio
 from operator import itemgetter
 from datetime import datetime, timedelta
 from discord.ext import commands
@@ -15,12 +16,16 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
+# TODO: Figure out the right call to create the bot since we don't need commands anymore (that's just for ?commands)
 bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 # initial values, although they are overwritten in on_ready if the relevant files exist
 
 # a map of {user_id: number_of_coins_that_user_has}
 user_coin_counts = {}
+
+# a map of {coin_count: user_display_names}
+coin_count_to_user_names = {}
 
 # turned off in prod - a map of {user_id: last_time_that_user_queried_value}
 last_value_query_time_per_user = {}
@@ -30,8 +35,7 @@ last_value = 1000
 
 @bot.event
 async def on_ready():
-    global user_coin_counts
-    global last_value
+    global user_coin_counts, last_value, coin_count_to_user_names
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
 
     synced = await bot.tree.sync() #syncs the slash commands with discord
@@ -45,6 +49,9 @@ async def on_ready():
     with open('value.txt', 'r') as f:
         last_value = float(f.read())
     print(f'Loaded last value: {last_value}')
+
+    coin_count_to_user_names = await create_count_to_users_dict()
+    print("Created rankings dictionary")
 
     print('------')
 
@@ -88,6 +95,16 @@ def write_user_coin_counts_to_file():
 def format_liquid(count):
     return '${:,.2f}'.format(count * last_value) + " USD"
 
+async def update_user_coin_count_scheduled():
+    global coin_count_to_user_names
+    write_user_coin_counts_to_file()
+    coin_count_to_user_names = await create_count_to_users_dict()
+
+def update_user_coin_count(update):
+    for id, count in update.items():
+        user_coin_counts[str(id)] = count
+    asyncio.get_event_loop().create_task(update_user_coin_count_scheduled())
+
 """
 We use on_raw_reaction_add/remove instead of on_reaction_add/remove as the docs suggest that
 there are cases on_reaction_add isn't called (when the message is not in the cache)
@@ -95,15 +112,14 @@ there are cases on_reaction_add isn't called (when the message is not in the cac
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
-    print(payload.emoji.name)
+    global coin_count_to_user_names
     if (payload.emoji.name == os.environ['COIN_EMOJI_NAME']):
 
         if (payload.user_id == payload.message_author_id):
             return # we ignore coins added by the user that sent the message
         message_author_id = payload.message_author_id
-        user_coin_counts[str(message_author_id)] = user_coin_counts.get(str(message_author_id), 0) + 1
-        print(user_coin_counts[str(message_author_id)])
-        write_user_coin_counts_to_file()
+        new_count = user_coin_counts.get(str(message_author_id), 0) + 1
+        update_user_coin_count({message_author_id: new_count})
 
 @bot.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
@@ -115,9 +131,10 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
         if (payload.user_id == message_author_id):
             return # we ignore coins added by the user that sent the message
         
-        count = user_coin_counts.get(message_author_id, 1)
-        user_coin_counts[str(message_author_id)] = count - 1 if count > 0 else 0
-        write_user_coin_counts_to_file()
+        count = user_coin_counts.get(str(message_author_id), 1)
+        new_count = count - 1 if count > 0 else 0
+        update_user_coin_count({message_author_id: new_count})
+
 
 @bot.tree.command(
     name="wallet",
@@ -200,15 +217,15 @@ async def get_user_by_id(id):
 
 '''Takes our dictionary of {user_id: coin_count} and converts it to {coin_count: [list_of_users]}'''
 async def create_count_to_users_dict():
-    count_to_users = {}
+    count_to_user_names = {}
     for id,count in user_coin_counts.items():
         user = await get_user_by_id(id)
-        if (count in count_to_users):
-            count_to_users[count].append(user)
+        if (count in count_to_user_names):
+            count_to_user_names[count].append(user.display_name)
         else:
-            count_to_users[count] = [user]
+            count_to_user_names[count] = [user.display_name]
 
-    return count_to_users
+    return count_to_user_names
 
 @bot.tree.command(
     name="ranking",
@@ -216,20 +233,19 @@ async def create_count_to_users_dict():
 )
 @app_commands.describe(number='How many people to include, defaults to 5')
 async def ranking(interaction, number:int=5):
-    count_to_users = await create_count_to_users_dict()
     # get the top {number} amounts of coins
-    rankings = list(reversed(sorted(count_to_users.keys())))[:number] #[:number] means take from index 0 number
+    rankings = list(reversed(sorted(coin_count_to_user_names.keys())))[:number] #[:number] means take from index 0 number
 
     embed = discord.Embed(title=f'Top {len(rankings)} S&P Coin Bag Holders:')
     for count in rankings:
-        users = count_to_users[count] # list of users with {count} coins
+        user_names = coin_count_to_user_names[count] # list of users with {count} coins
 
-        users_string = users[0].mention # first (or only) user's @mention
+        users_string = user_names[0] # first (or only) user's @mention
         name = f'{count} ({format_liquid(count)})'
-        if (len(users) > 1):
+        if (len(user_names) > 1):
             name += " (tie)"
-            for user in users[1:]:
-                users_string += f', {user.mention}'
+            for user_name in user_names[1:]:
+                users_string += f', {user_name}'
                 
         embed.add_field(name=name, value=users_string, inline=False)
     await interaction.response.send_message(embed=embed)
@@ -264,10 +280,7 @@ async def trade(interaction, member: discord.Member, number: int):
     sending_user_count = sending_user_count - number
     recipient_count = recipient_count + number
 
-    user_coin_counts[sending_user_id] = sending_user_count
-    user_coin_counts[recipient_user_id] = recipient_count
-
-    write_user_coin_counts_to_file()
+    update_user_coin_count({recipient_user_id: recipient_count, sending_user_id: sending_user_count})
 
     embed = discord.Embed(title=f'A new trade has been made!',
                           description=f'''{interaction.user.mention} traded {member.mention} {number} <a:spcoinbot:1316612238290849822>
